@@ -81,6 +81,6 @@ public class DemoFileDbApplication {
 //			TypeFacture tf = msg.getBody(TypeFacture.class);
 //			System.out.println(tf);
 //		};
-	}
+//	}
 
 }
