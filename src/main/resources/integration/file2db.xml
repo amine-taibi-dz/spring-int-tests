@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xmlns:int="http://www.springframework.org/schema/integration"
+	xmlns:task="http://www.springframework.org/schema/task"
+	xmlns:file="http://www.springframework.org/schema/integration/file"
+	xmlns:int-jdbc="http://www.springframework.org/schema/integration/jdbc"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+			https://www.springframework.org/schema/beans/spring-beans.xsd
+			http://www.springframework.org/schema/jdbc 
+			https://www.springframework.org/schema/jdbc/spring-jdbc.xsd
+			http://www.springframework.org/schema/integration
+			https://www.springframework.org/schema/integration/spring-integration.xsd
+			http://www.springframework.org/schema/task 
+            http://www.springframework.org/schema/task/spring-task.xsd
+			http://www.springframework.org/schema/integration/jdbc
+			https://www.springframework.org/schema/integration/jdbc/spring-integration-jdbc.xsd
+			http://www.springframework.org/schema/integration/file
+			https://www.springframework.org/schema/integration/file/spring-integration-file.xsd"
+	default-autowire="default">
+	
+	<file:inbound-channel-adapter 
+		auto-create-directory="true" id="filesIn"
+		filename-regex="^${files.prefix}.*\.(${files.ext})$"
+		directory="file:${files.path.input}" channel="fileMessages">
+		<int:poller id="poller1" fixed-delay="1000" task-executor="executor" />
+	</file:inbound-channel-adapter>
+
+	<int:channel id="fileMessages">
+		<int:queue />
+	</int:channel>
+
+	<int:channel id="fileStrings">
+	</int:channel>
+
+	<file:file-to-string-transformer charset="UTF-8" 
+		delete-files="true" input-channel="fileMessages"
+		output-channel="fileStrings" >
+	</file:file-to-string-transformer>
+
+	<int:splitter input-channel="fileStrings"
+		ref="generatePersonService" method="split"
+		output-channel="personsLines">
+	</int:splitter>
+
+	<int:channel id="personsLines"></int:channel>
+
+	<int:filter input-channel="personsLines"
+		ref="generatePersonService" method="filter"
+		output-channel="filteredPersonsLines" />
+
+	<int:channel id="filteredPersonsLines">
+	</int:channel>
+
+	<int:service-activator
+		input-channel="filteredPersonsLines" ref="generatePersonService"
+		method="generate" output-channel="outChannel" />
+
+	<int:poller id="poller" default="true" fixed-delay="1000" />
+
+	<task:executor id="executor" pool-size="5" />
+
+	<int:channel id="outChannel"></int:channel>
+	<int-jdbc:outbound-channel-adapter data-source="datasource1" channel="outChannel"
+               query="insert into Person (name,gender,dateOfBirth) 
+                      values (:payload.name,:payload.gender,:payload.dateOfBirth)">
+	 </int-jdbc:outbound-channel-adapter>
+</beans>

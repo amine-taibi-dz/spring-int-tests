@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xmlns:int="http://www.springframework.org/schema/integration"
+	xmlns:task="http://www.springframework.org/schema/task"
+	xmlns:file="http://www.springframework.org/schema/integration/file"
+	xmlns:int-jdbc="http://www.springframework.org/schema/integration/jdbc"
+	xmlns:int-jms="http://www.springframework.org/schema/integration/jms"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+			https://www.springframework.org/schema/beans/spring-beans.xsd
+			http://www.springframework.org/schema/jdbc 
+			https://www.springframework.org/schema/jdbc/spring-jdbc.xsd
+			http://www.springframework.org/schema/integration
+			https://www.springframework.org/schema/integration/spring-integration.xsd
+			http://www.springframework.org/schema/task 
+            http://www.springframework.org/schema/task/spring-task.xsd
+			http://www.springframework.org/schema/integration/jdbc
+			https://www.springframework.org/schema/integration/jdbc/spring-integration-jdbc.xsd
+			http://www.springframework.org/schema/integration/jms
+			https://www.springframework.org/schema/integration/jms/spring-integration-jms.xsd
+			http://www.springframework.org/schema/integration/file
+			https://www.springframework.org/schema/integration/file/spring-integration-file.xsd"
+	default-autowire="default">
+
+	<int-jms:inbound-channel-adapter
+		channel="message_text_type_facture" jms-template="jmsTemplate"
+		destination-name="typeFacture" id="recupMessageZero">
+		<int:poller id="poller01" fixed-delay="10000"
+			task-executor="executor" />
+	</int-jms:inbound-channel-adapter>
+	<int:channel id="message_text_type_facture"></int:channel>
+
+	<int:poller id="poller" default="true" fixed-delay="1000" />
+
+	<task:executor id="executor" pool-size="5" />
+
+	<int:service-activator
+		input-channel="message_text_type_facture"
+		ref="generateTypeFactureService" method="generate"
+		output-channel="object_type_message" />
+	<int:channel id="object_type_message"></int:channel>
+	<int:router  default-output-channel="object_type_message_ok" ref="generateTypeFactureService" method="route" 
+	           input-channel="object_type_message"></int:router>
+	<int:channel id="object_type_message_ok"></int:channel>
+	<int:channel id="object_type_message_ko"></int:channel>
+	
+	<int-jdbc:outbound-channel-adapter data-source="datasource2"
+		channel="object_type_message_ok"
+		query="insert into type_facture (label,value) 
+	                                values (:payload.label,:payload.value)">
+	</int-jdbc:outbound-channel-adapter>
+
+	<int:outbound-channel-adapter ref="generateTypeFactureService" method="out" channel="object_type_message_ko"></int:outbound-channel-adapter>
+</beans>

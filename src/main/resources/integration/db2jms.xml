@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xmlns:int="http://www.springframework.org/schema/integration"
+	xmlns:task="http://www.springframework.org/schema/task"
+	xmlns:file="http://www.springframework.org/schema/integration/file"
+	xmlns:int-jdbc="http://www.springframework.org/schema/integration/jdbc"
+	xmlns:int-jms="http://www.springframework.org/schema/integration/jms"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+			https://www.springframework.org/schema/beans/spring-beans.xsd
+			http://www.springframework.org/schema/jdbc 
+			https://www.springframework.org/schema/jdbc/spring-jdbc.xsd
+			http://www.springframework.org/schema/integration
+			https://www.springframework.org/schema/integration/spring-integration.xsd
+			http://www.springframework.org/schema/task 
+            http://www.springframework.org/schema/task/spring-task.xsd
+			http://www.springframework.org/schema/integration/jdbc
+			https://www.springframework.org/schema/integration/jdbc/spring-integration-jdbc.xsd
+			http://www.springframework.org/schema/integration/jms
+			https://www.springframework.org/schema/integration/jms/spring-integration-jms.xsd
+			http://www.springframework.org/schema/integration/file
+			https://www.springframework.org/schema/integration/file/spring-integration-file.xsd"
+	default-autowire="default">
+
+	<int:poller id="poller" default="true" fixed-delay="1000" />
+
+	<task:executor id="executor" pool-size="5" />
+	<int-jdbc:inbound-channel-adapter
+		id="recupTypeFactureFromDb" data-source="datasource2"
+		channel="typesFactureToSend" row-mapper="typeFactureRowMapper"
+		update="UPDATE type_facture tf set tf.done=1 where tf.id in (:id)"
+		query="select * from type_facture tf where tf.done=0" max-rows="1">
+		<int:poller id="poller01" fixed-delay="1000"
+			task-executor="executor" />
+	</int-jdbc:inbound-channel-adapter>
+
+	<int:publish-subscribe-channel id="typesFactureToSend"/>
+	
+	<int:outbound-channel-adapter
+		ref="generateTypeFactureService" method="out"
+		channel="typesFactureToSend" />
+	<int-jms:outbound-channel-adapter extract-payload="true" 
+		channel="typesFactureToSend"  jms-template="jmsTemplate"
+		destination-name="typeFacture">
+	</int-jms:outbound-channel-adapter>
+	
+</beans>
