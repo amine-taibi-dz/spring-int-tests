@@ -1,5 +1,5 @@
 # spring-int-tests
-Simple example in spring integration
+Simple example for spring integration (as springboot project)
 with th use of DB ---> JMS,
 JMS ---> DB and
 file --> DB
